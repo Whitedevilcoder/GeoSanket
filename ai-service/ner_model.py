@@ -2,20 +2,28 @@
 import os
 from extractor import extract, build_response
 
+MODEL_ID = os.environ.get("NER_MODEL_ID", "")   # e.g. "yourname/geosanket-ner" (free Hub model repo)
 MODEL_DIR = os.environ.get("NER_MODEL_DIR", os.path.join(os.path.dirname(os.path.abspath(__file__)), "models", "ner"))
 FIELD_OF = {"PROJECT": "name", "BUDGET": "budgetSanctioned", "SPENT": "budgetSpent", "PROGRESS": "completionPercentage",
             "LEADER": "leaderName", "SCHEME": "scheme", "DEPT": "department"}
 _pipe = None
 
+
+def source() -> str:
+    return MODEL_ID or MODEL_DIR
+
+
 def available() -> bool:
-    return os.path.isdir(MODEL_DIR)
+    return bool(MODEL_ID) or os.path.isdir(MODEL_DIR)
+
 
 def _load():
     global _pipe
     if _pipe is None:
         from transformers import pipeline
-        _pipe = pipeline("token-classification", model=MODEL_DIR, aggregation_strategy="simple")
+        _pipe = pipeline("token-classification", model=source(), aggregation_strategy="simple")
     return _pipe
+
 
 def _parse(field, txt):
     from extractor import _money_items, PERCENT
@@ -24,6 +32,7 @@ def _parse(field, txt):
     if field == "completionPercentage":
         m = PERCENT.search(txt); return float(m.group(1)) if m else None
     return txt.strip() or None
+
 
 def extract_ner(text: str, hybrid: bool = True) -> dict:
     """BERT entities → fields. hybrid=True keeps rule-based values (type, status, designation) and fills gaps."""

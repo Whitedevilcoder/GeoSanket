@@ -16,7 +16,7 @@ class ExtractRequest(BaseModel):
 
 @app.get("/")
 def health():
-    return {"status": "GeoSanket AI service running", "endpoints": ["POST /extract?engine=rules|bert|hybrid", "POST /extract-pdf"], "bert_model_loaded": ner_model.available()}
+    return {"status": "GeoSanket AI service running", "endpoints": ["POST /extract?engine=rules|bert|hybrid", "POST /extract-pdf"], "bert_model_configured": ner_model.available(), "bert_source": ner_model.source() if ner_model.available() else None}
 
 
 def _run(text: str, engine: str):
@@ -24,7 +24,7 @@ def _run(text: str, engine: str):
         return extract(text)
     if engine in ("bert", "hybrid"):
         if not ner_model.available():
-            raise HTTPException(503, f"No trained NER model found at {ner_model.MODEL_DIR}. Train it (ml/train_ner.py) or use engine=rules")
+            raise HTTPException(503, f"No NER model configured ({ner_model.source()}). Set NER_MODEL_ID or train one (ml/train_ner.py), or use engine=rules")
         return ner_model.extract_ner(text, hybrid=(engine == "hybrid"))
     raise HTTPException(400, "engine must be rules | bert | hybrid")
 

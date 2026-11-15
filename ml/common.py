@@ -1,7 +1,5 @@
 """Shared label scheme + span→field conversion (used by dataset, training, comparison)."""
-import os, sys
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "ai-service"))
-from extractor import _money_items, PERCENT
+from baseline_rules import _money_items, PERCENT   # frozen rules-only copy: no model download on import
 
 LABELS = ["PROJECT", "BUDGET", "SPENT", "PROGRESS", "LEADER", "SCHEME", "DEPT"]
 TAGS = ["O"] + [f"{p}-{l}" for l in LABELS for p in ("B", "I")]

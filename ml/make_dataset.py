@@ -41,8 +41,19 @@ TEMPLATES = [
  "On {DATE}, {TITLE} {LEADER} opened the {PROJECT}. {DISTR} The {BUDGET} facility was constructed under {SCHEME} by the {DEPT}.",
  "Under {SCHEME}, the {DEPT} is executing the {PROJECT} at {BUDGET}. {PROGRESS} of the physical work is complete.",
  "{TITLE} {LEADER} criticised delays at the {PROJECT}, where only {PROGRESS} of work is done despite {SPENT} already spent. {DISTR}",
+ "{DEPT} has already spent {SPENT} on the {PROJECT}. {DISTR}",
+ "So far {SPENT} has been utilised on the {PROJECT}, {TITLE} {LEADER} told reporters on {DATE}.",
+ "The {PROJECT} was sanctioned at {BUDGET}, of which {SPENT} has been spent so far. {TITLE} {LEADER} reviewed the {DEPT} report.",
+ "Against a sanctioned amount of {BUDGET}, only {SPENT} had been spent on the {PROJECT} by {DATE}, and {PROGRESS} of work was complete.",
+ "{LEADER}, {TITLE}, said {BUDGET} had been earmarked for the {PROJECT} while {SPENT} stood utilised.",
+ "Spending on the {PROJECT} has touched {SPENT}; the {DEPT} had budgeted {BUDGET}.",
+ "The {PROJECT} is {PROGRESS} complete. {DISTR} {SPENT} has been spent.",
+ "{TITLE} {LEADER} visited the {PROJECT} on {DATE}. {DISTR} The {DEPT} said work is {PROGRESS} complete.",
+ "The {PROJECT} has cost the exchequer {SPENT} to date. {DISTR} Work is {PROGRESS} complete under {SCHEME}.",
+ "The {DEPT} approved {BUDGET} for the {PROJECT}; {SPENT} was spent in the first phase, {TITLE} {LEADER} said.",
+ "{SPENT} has been spent against the {BUDGET} allotted for the {PROJECT}, under {SCHEME}.",
 ]
-TEST_TEMPLATES = {3, 9, 13}   # never used for train/val
+TEST_TEMPLATES = {3, 9, 13, 22, 23, 24}   # never used for train/val
 LABEL_KEYS = {"PROJECT", "BUDGET", "SPENT", "PROGRESS", "LEADER", "SCHEME", "DEPT"}
 
 

@@ -14,20 +14,18 @@ from typing import Optional
 UNITS = {
     "crore": 1e7, "cr": 1e7, "lakh": 1e5, "lac": 1e5,
     "million": 1e6, "mn": 1e6, "billion": 1e9, "bn": 1e9, "thousand": 1e3,
-    # Hindi / Marathi units
-    "करोड़": 1e7, "करोड": 1e7, "लाख": 1e5, "हज़ार": 1e3, "हजार": 1e3,
 }
 
 MONEY = re.compile(
-    r"(?:₹|Rs\.?|INR|रु\.?|रुपये)\s*(\d[\d,]*(?:\.\d+)?)\s*(crore|cr|lakh|lac|million|mn|billion|bn|thousand|करोड़|करोड|लाख|हज़ार|हजार)?\b"
-    r"|(\d[\d,]*(?:\.\d+)?)\s*(crore|lakh|करोड़|करोड|लाख)s?\s*(?:rupees|रुपये)?",
+    r"(?:₹|Rs\.?|INR)\s*(\d[\d,]*(?:\.\d+)?)\s*(crore|cr|lakh|lac|million|mn|billion|bn|thousand)?\b"
+    r"|(\d[\d,]*(?:\.\d+)?)\s*(crore|lakh)s?\s*(?:rupees)?",
     re.I,
 )
-SPENT_KW = ("spent", "incurred", "utilised", "utilized", "expenditure", "disbursed", "released", "खर्च", "व्यय")
-SANC_KW = ("sanctioned", "allocated", "approved", "estimated", "budget", "cost", "outlay", "worth", "investment", "स्वीकृत", "लागत", "बजट", "राशि")
+SPENT_KW = ("spent", "incurred", "utilised", "utilized", "expenditure", "disbursed", "released")
+SANC_KW = ("sanctioned", "allocated", "approved", "estimated", "budget", "cost", "outlay", "worth", "investment")
 
-PERCENT = re.compile(r"(\d{1,3}(?:\.\d+)?)\s*(?:%|per\s?cent|percent|प्रतिशत|फीसदी)", re.I)
-PROGRESS_KW = ("complete", "completion", "done", "progress", "finished", "work", "construction", "physical", "पूर्ण", "पूरा", "प्रगति", "निर्माण")
+PERCENT = re.compile(r"(\d{1,3}(?:\.\d+)?)\s*(?:%|per\s?cent|percent)", re.I)
+PROGRESS_KW = ("complete", "completion", "done", "progress", "finished", "work", "construction", "physical")
 
 TITLES = (
     r"(?:Deputy Chief Minister|Chief Minister|Prime Minister|Union Minister|Minister of State|"
@@ -63,17 +61,17 @@ NAME_RX = re.compile(
 )
 
 TYPE_KW = [
-    ("hospital", ("hospital", "trauma", "medical", "clinic", "aiims", "dispensary", "अस्पताल", "ट्रॉमा", "चिकित्सा")),
-    ("bridge", ("bridge", "flyover", "underpass", "overbridge", "पुल", "फ्लाईओवर")),
-    ("road", ("road", "highway", "expressway", "corridor", "सड़क", "राजमार्ग")),
-    ("college", ("school", "college", "university", "campus", "institute", "स्कूल", "कॉलेज", "विश्वविद्यालय")),
-    ("park", ("park", "garden", "stadium", "playground", "पार्क", "बगीचा", "स्टेडियम")),
-    ("water", ("water", "pipeline", "sewage", "sewer", "stp", "dam", "canal", "drain", "पानी", "नहर", "बांध")),
+    ("hospital", ("hospital", "trauma", "medical", "clinic", "aiims", "dispensary")),
+    ("bridge", ("bridge", "flyover", "underpass", "overbridge")),
+    ("road", ("road", "highway", "expressway", "corridor")),
+    ("college", ("school", "college", "university", "campus", "institute")),
+    ("park", ("park", "garden", "stadium", "playground")),
+    ("water", ("water", "pipeline", "sewage", "sewer", "stp", "dam", "canal", "drain")),
 ]
 
-IN_PROGRESS_RX = re.compile(r"under construction|in progress|ongoing|will be completed|to be completed|expected to be (?:completed|ready)|being (?:built|constructed)|निर्माणाधीन|प्रगति पर|पूरा होगा", re.I)
-PLANNED_RX = re.compile(r"\bproposed\b|\bplanned\b|to be built|will be built|\bapproved for\b|not started|pending|प्रस्तावित|योजना", re.I)
-COMPLETED_RX = re.compile(r"inaugurat|\bcompleted\b|\bopened\b|dedicated to the nation|commissioned|handed over|उद्घाटन|पूर्ण|पूरा हुआ|लोकार्पित", re.I)
+IN_PROGRESS_RX = re.compile(r"under construction|in progress|ongoing|will be completed|to be completed|expected to be (?:completed|ready)|being (?:built|constructed)", re.I)
+PLANNED_RX = re.compile(r"\bproposed\b|\bplanned\b|to be built|will be built|\bapproved for\b", re.I)
+COMPLETED_RX = re.compile(r"inaugurat|\bcompleted\b|\bopened\b|dedicated to the nation|commissioned|handed over", re.I)
 YEAR_RX = re.compile(r"\b(?:in|by|since|during)\s+((?:19|20)\d{2})\b")
 
 
@@ -180,10 +178,9 @@ def _type(text, name):
 
 
 def _status(text, pct):
-    # Check completed FIRST
-    if COMPLETED_RX.search(text): return "completed"
     if IN_PROGRESS_RX.search(text): return "in_progress"
     if PLANNED_RX.search(text): return "planned"
+    if COMPLETED_RX.search(text): return "completed"
     if pct is not None: return "completed" if pct >= 100 else "in_progress"
     return "in_progress"
 
@@ -191,10 +188,10 @@ def _status(text, pct):
 def extract(text: str) -> dict:
     text = re.sub(r"\s+", " ", text).strip()
     name, c_name = _project_name(text)
-    leader, designation, c_lead = _leader(text)          
     items = _money_items(text)
     sanctioned, spent = _classify_money(text, items)
     pct = _completion(text)
+    leader, designation, c_lead = _leader(text)
     scheme, c_sch = _scheme(text)
     dept, c_dep = _department(text)
     ptype = _type(text, name)
@@ -202,8 +199,6 @@ def extract(text: str) -> dict:
     if pct is None and status == "completed":
         pct = 100.0
     y = YEAR_RX.search(text)
-
-    
 
     fields = {
         "name": name,
@@ -230,23 +225,28 @@ def extract(text: str) -> dict:
         "department": c_dep,
     }
 
+    return build_response(fields, confidence)
+
+
+def build_response(fields: dict, confidence: dict) -> dict:
+    sanctioned, spent, pct = fields.get("budgetSanctioned"), fields.get("budgetSpent"), fields.get("completionPercentage")
+    name, leader = fields.get("name"), fields.get("leaderName")
     cr = (sanctioned or 0) / 1e7
     body_parts = []
     if sanctioned: body_parts.append(f"₹{cr:.0f} Cr")
-    # Add a check so it doesn't break if only Hindi text is provided
     if pct is not None: body_parts.append(f"{pct:.0f}% complete")
     if leader: body_parts.append(leader)
     form_fields = {
         "nameEn": name or "",
-        "projectType": ptype,
+        "projectType": fields.get("projectType") or "other",
         "leaderName": leader or "",
-        "leaderDesignation": designation or "",
+        "leaderDesignation": fields.get("leaderDesignation") or "",
         "budgetSanctioned": f"{cr:.2f}".rstrip("0").rstrip(".") if sanctioned else "",
         "budgetSpent": f"{(spent or 0) / 1e7:.2f}".rstrip("0").rstrip(".") if spent else "",
         "completionPercentage": int(round(pct)) if pct is not None else 0,
-        "status": status,
-        "scheme": scheme or "",
-        "department": dept or "",
+        "status": fields.get("status") or "in_progress",
+        "scheme": fields.get("scheme") or "",
+        "department": fields.get("department") or "",
         "notifTitleEn": name or "",
         "notifBodyEn": " · ".join(body_parts),
     }

@@ -3,10 +3,19 @@ Rules vs BERT vs Hybrid, scored identically at FIELD level on the held-out test 
     python compare.py [--data data/test.jsonl] [--model ../ai-service/models/ner]
 Writes results.json and results.md (paste-ready table for the paper).
 """
-import argparse, json, os
+import argparse, collections, json, os
 from common import FIELDS, spans_to_gold, label2id
-from extractor import extract
-from evaluate import match
+from baseline_rules import extract
+
+
+def _norm(s): return " ".join(str(s).lower().replace(".", "").split())
+
+
+def match(field, pred, gold):
+    if field in ("budgetSanctioned", "budgetSpent"): return abs(pred - gold) <= 0.01 * gold
+    if field == "completionPercentage": return abs(pred - gold) < 0.5
+    p, g = _norm(pred), _norm(gold)
+    return p == g or p in g or g in p
 
 
 def entities_to_fields(text, ents):
@@ -38,6 +47,32 @@ def score(preds, golds):
     return st
 
 
+def error_report(name, preds, golds, texts, limit=40):
+    """Counts missed / spurious / wrong-value per field + BUDGET<->SPENT swaps; dumps examples to errors_<name>.jsonl"""
+    kinds, swaps, rows = collections.Counter(), collections.Counter(), []
+    for p, g, t in zip(preds, golds, texts):
+        for f in FIELDS:
+            pv, gv = p.get(f), g.get(f)
+            if gv is None and pv is None: continue
+            if gv is None: kind = "spurious"
+            elif pv is None: kind = "missed"
+            elif match(f, pv, gv): continue
+            else: kind = "wrong_value"
+            kinds[(f, kind)] += 1
+            if len(rows) < limit: rows.append({"field": f, "kind": kind, "pred": pv, "gold": gv, "text": t})
+        if g.get("budgetSpent") is not None and p.get("budgetSanctioned") is not None and match("budgetSanctioned", p["budgetSanctioned"], g["budgetSpent"]):
+            swaps["SPENT predicted as BUDGET"] += 1
+        if g.get("budgetSanctioned") is not None and p.get("budgetSpent") is not None and match("budgetSpent", p["budgetSpent"], g["budgetSanctioned"]):
+            swaps["BUDGET predicted as SPENT"] += 1
+    print(f"\n-- Error analysis: {name} --")
+    for (f, k), n in sorted(kinds.items(), key=lambda x: -x[1]): print(f"  {f:<22}{k:<13}{n}")
+    for k, n in swaps.items(): print(f"  ** {k}: {n} docs")
+    if not kinds: print("  (no errors)")
+    safe = "".join(ch if ch.isalnum() else "_" for ch in name)
+    with open(f"errors_{safe}.jsonl", "w", encoding="utf-8") as fh:
+        for r in rows: fh.write(json.dumps(r, ensure_ascii=False) + "\n")
+
+
 def prf(tp, fp, fn):
     p = tp / (tp + fp) if tp + fp else 0.0; r = tp / (tp + fn) if tp + fn else 0.0
     return p, r, (2 * p * r / (p + r) if p + r else 0.0)
@@ -65,6 +100,7 @@ def main():
     else:
         print(f"[!] No model at {a.model} — scoring rule-based baseline only. Train first: python train_ner.py")
     res = {name: summarize(score(p, golds)) for name, p in systems.items()}
+    for name, p in systems.items(): error_report(name, p, golds, texts)
     cols = FIELDS + ["MICRO_P", "MICRO_R", "MICRO_F1"]
     md = "| System | " + " | ".join(cols) + " |\n|" + "---|" * (len(cols) + 1) + "\n"
     for n, r in res.items(): md += f"| {n} | " + " | ".join(f"{r[c]:.3f}" for c in cols) + " |\n"
