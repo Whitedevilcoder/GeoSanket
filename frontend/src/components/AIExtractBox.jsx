@@ -27,7 +27,7 @@ export default function AIExtractBox({ onApply }) {
       onApply(data.formFields)
       setConf(data.confidence)
       const found = Object.entries(data.confidence).filter(([, v]) => v > 0).length
-      toast.success(`Extracted ${found}/${Object.keys(LABELS).length} fields — review before saving`, { id: tid })
+      toast.success(`Extracted ${found}/${Object.keys(LABELS).length} fields via ${data.engineUsed || "AI"}${data.fallback ? " (BERT offline → fallback)" : ""} — review before saving`, { id: tid })
     } catch (err) {
       toast.error(err.response?.data?.error || err.message, { id: tid })
       console.error('[AIExtract]', err)
