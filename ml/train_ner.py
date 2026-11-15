@@ -51,12 +51,31 @@ def main():
             yt.append([id2label[l] for l in lb if l != -100]); yp.append([id2label[x] for x, l in zip(pr, lb) if l != -100])
         return {"precision": precision_score(yt, yp), "recall": recall_score(yt, yp), "f1": f1_score(yt, yp)}
 
-    args = TrainingArguments(output_dir="ckpt", num_train_epochs=a.epochs, learning_rate=a.lr, per_device_train_batch_size=a.bs,
-                             per_device_eval_batch_size=a.bs, eval_strategy="epoch", save_strategy="epoch", load_best_model_at_end=True,
-                             metric_for_best_model="f1", weight_decay=0.01, warmup_ratio=0.1, report_to="none",
-                             fp16=torch.cuda.is_available(), save_total_limit=1, seed=a.seed)
-    trainer = Trainer(model=model, args=args, train_dataset=tr, eval_dataset=va, tokenizer=tok,
-                      data_collator=DataCollatorForTokenClassification(tok), compute_metrics=metrics)
+        args = TrainingArguments(
+        output_dir="ckpt", 
+        num_train_epochs=a.epochs, 
+        learning_rate=a.lr, 
+        per_device_train_batch_size=a.bs,
+        per_device_eval_batch_size=a.bs, 
+        eval_strategy="epoch", 
+        save_strategy="epoch", 
+        load_best_model_at_end=True,
+        metric_for_best_model="f1", 
+        weight_decay=0.01, 
+        warmup_steps=500, # <--- Changed from warmup_ratio to warmup_steps
+        report_to="none",
+        fp16=torch.cuda.is_available(), 
+        save_total_limit=1, 
+        seed=a.seed
+    )
+    trainer = Trainer(
+        model=model, 
+        args=args, 
+        train_dataset=tr, 
+        eval_dataset=va, 
+        data_collator=DataCollatorForTokenClassification(tok), # <--- Removed tokenizer=tok
+        compute_metrics=metrics
+    )
     trainer.train()
     res = trainer.predict(te)
     m = metrics(res); print("TEST (held-out templates):", m)
