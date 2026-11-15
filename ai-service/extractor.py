@@ -10,6 +10,17 @@ Each field returns a value and a confidence score.
 """
 import re
 from typing import Optional
+from transformers import pipeline
+
+# Load the Multilingual BERT model
+print("Loading Multilingual BERT model (this takes a moment)...")
+try:
+    # This model detects Persons (PER), Organizations (ORG), and Locations (LOC)
+    ner_pipeline = pipeline("ner", model="Davlan/bert-base-multilingual-cased-ner-hrl", aggregation_strategy="simple")
+    print("✅ BERT Multilingual NER model loaded")
+except Exception as e:
+    print(f"⚠️ Could not load BERT: {e}")
+    ner_pipeline = None
 
 UNITS = {
     "crore": 1e7, "cr": 1e7, "lakh": 1e5, "lac": 1e5,
@@ -180,9 +191,10 @@ def _type(text, name):
 
 
 def _status(text, pct):
+    # Check completed FIRST
+    if COMPLETED_RX.search(text): return "completed"
     if IN_PROGRESS_RX.search(text): return "in_progress"
     if PLANNED_RX.search(text): return "planned"
-    if COMPLETED_RX.search(text): return "completed"
     if pct is not None: return "completed" if pct >= 100 else "in_progress"
     return "in_progress"
 
@@ -190,10 +202,28 @@ def _status(text, pct):
 def extract(text: str) -> dict:
     text = re.sub(r"\s+", " ", text).strip()
     name, c_name = _project_name(text)
+    leader, designation, c_lead = _leader(text)
+
+    # 2. BERT Deep Learning Fallback (for complex or Hindi text)
+    if ner_pipeline:
+        try:
+            entities = ner_pipeline(text)
+            for ent in entities:
+                # If regex missed the leader, use BERT's Person (PER) tag
+                if ent['entity_group'] == 'PER' and not leader:
+                    leader = ent['word']
+                    c_lead = 0.95 # High confidence from BERT
+                # If regex missed the project, use BERT's Organization (ORG) tag
+                if ent['entity_group'] == 'ORG' and not name:
+                    name = ent['word']
+                    c_name = 0.90
+        except Exception as e:
+            print(f"BERT extraction failed: {e}")
+
+            
     items = _money_items(text)
     sanctioned, spent = _classify_money(text, items)
     pct = _completion(text)
-    leader, designation, c_lead = _leader(text)
     scheme, c_sch = _scheme(text)
     dept, c_dep = _department(text)
     ptype = _type(text, name)
@@ -201,6 +231,8 @@ def extract(text: str) -> dict:
     if pct is None and status == "completed":
         pct = 100.0
     y = YEAR_RX.search(text)
+
+    
 
     fields = {
         "name": name,

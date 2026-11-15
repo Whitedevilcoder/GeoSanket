@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from pypdf import PdfReader
 from extractor import extract
+import ner_model
 
 app = FastAPI(title="GeoSanket AI Service", version="1.0.0")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
@@ -15,19 +16,29 @@ class ExtractRequest(BaseModel):
 
 @app.get("/")
 def health():
-    return {"status": "GeoSanket AI service running", "endpoints": ["POST /extract", "POST /extract-pdf"]}
+    return {"status": "GeoSanket AI service running", "endpoints": ["POST /extract?engine=rules|bert|hybrid", "POST /extract-pdf"], "bert_model_loaded": ner_model.available()}
+
+
+def _run(text: str, engine: str):
+    if engine == "rules":
+        return extract(text)
+    if engine in ("bert", "hybrid"):
+        if not ner_model.available():
+            raise HTTPException(503, f"No trained NER model found at {ner_model.MODEL_DIR}. Train it (ml/train_ner.py) or use engine=rules")
+        return ner_model.extract_ner(text, hybrid=(engine == "hybrid"))
+    raise HTTPException(400, "engine must be rules | bert | hybrid")
 
 
 @app.post("/extract")
-def extract_text(req: ExtractRequest):
+def extract_text(req: ExtractRequest, engine: str = "rules"):
     text = req.text.strip()
     if len(text) < 20:
         raise HTTPException(400, "text must be at least 20 characters")
-    return extract(text[:20000])
+    return _run(text[:20000], engine)
 
 
 @app.post("/extract-pdf")
-async def extract_pdf(file: UploadFile = File(...)):
+async def extract_pdf(file: UploadFile = File(...), engine: str = "rules"):
     if not (file.filename or "").lower().endswith(".pdf"):
         raise HTTPException(400, "Upload a .pdf file")
     data = await file.read()
@@ -38,4 +49,4 @@ async def extract_pdf(file: UploadFile = File(...)):
         raise HTTPException(400, f"Could not read PDF: {e}")
     if len(text.strip()) < 20:
         raise HTTPException(422, "No extractable text in PDF (scanned image PDFs need OCR)")
-    return extract(text[:20000])
+    return _run(text[:20000], engine)
