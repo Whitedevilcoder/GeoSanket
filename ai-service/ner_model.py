@@ -47,4 +47,10 @@ def extract_ner(text: str, hybrid: bool = True) -> dict:
         v = _parse(f, text[e["start"]:e["end"]])
         if v is not None:
             fields[f] = v; conf[f] = round(float(e["score"]), 3); seen.add(f)
+    # never keep a rules-derived money value that BERT assigned to a different money field
+    money = ("budgetSanctioned", "budgetSpent")
+    for f in money:
+        other = [fields[o] for o in money if o != f and o in seen and fields.get(o) is not None]
+        if f not in seen and fields.get(f) is not None and any(abs(fields[f] - v) <= 0.01 * v for v in other):
+            fields[f] = None; conf[f] = 0.0
     return build_response(fields, conf)

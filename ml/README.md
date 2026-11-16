@@ -20,3 +20,12 @@ Hugging Face Docker/Gradio Spaces are paid; **model repos on the Hub are free**.
 3. Expose it for the deployed site: `cloudflared tunnel --url http://localhost:8000` (copy the https URL)
 4. On the Render *backend*: `AI_BERT_URL=<tunnel url>` — and keep `AI_SERVICE_URL` = the always-on rules service.
 The backend tries BERT first and silently falls back to rules if the tunnel/laptop is offline.
+
+## Real-data test set (the number that matters for the paper)
+    python real_eval.py prefill raw real_labels.csv      # raw/ = one .txt per press release
+    # correct every cell in Excel (budgets in crore; blank = not stated); fill the 'source' column
+    python real_eval.py build real_labels.csv data/real_test.jsonl
+    python compare.py --data data/real_test.jsonl
+Labelling rules: BUDGET = sanctioned/approved/estimated project cost · SPENT = amount stated as spent/utilised/released ·
+PROGRESS = % of work complete (not other percentages) · LEADER = the minister/official named in connection with the project.
+Train on synthetic only, test on real = honest domain-shift experiment. Report lenient AND strict tables from results.md.

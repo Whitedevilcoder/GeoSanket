@@ -14,13 +14,13 @@ def pattern(spans):
 def load(n): return [json.loads(l) for l in open(f"data/{n}.jsonl", encoding="utf-8")]
 
 if __name__ == "__main__":
-    dist = {n: collections.Counter(pattern(r["spans"]) for r in load(n)) for n in ("train", "test")}
+    dist = {n: collections.Counter(pattern(r["spans"]) for r in load(n)) for n in ("train", "val", "test")}
     pats = sorted(set().union(*dist.values()))
-    print(f"{'pattern':<16}{'train %':>9}{'test %':>9}")
+    pct = lambda n, p: 100 * dist[n][p] / sum(dist[n].values())
+    print(f"{'pattern':<16}{'train %':>9}{'val %':>9}{'test %':>9}")
     bad = []
     for p in pats:
-        tr = 100 * dist["train"][p] / sum(dist["train"].values()); te = 100 * dist["test"][p] / sum(dist["test"].values())
-        flag = "  <-- test pattern rare/absent in train" if te > 0 and tr < 3 else ""
+        flag = "  <-- unseen/rare in train" if (pct("val", p) > 0 or pct("test", p) > 0) and pct("train", p) < 3 else ""
         if flag: bad.append(p)
-        print(f"{p:<16}{tr:>8.1f}%{te:>8.1f}%{flag}")
-    print("\nAUDIT:", "FAIL — " + ", ".join(bad) if bad else "PASS (all test patterns are covered in training)")
+        print(f"{p:<16}{pct('train', p):>8.1f}%{pct('val', p):>8.1f}%{pct('test', p):>8.1f}%{flag}")
+    print("\nAUDIT:", "FAIL — " + ", ".join(bad) if bad else "PASS (every val/test pattern is covered in training)")

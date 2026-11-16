@@ -54,6 +54,7 @@ TEMPLATES = [
  "{SPENT} has been spent against the {BUDGET} allotted for the {PROJECT}, under {SCHEME}.",
 ]
 TEST_TEMPLATES = {3, 9, 13, 22, 23, 24}   # never used for train/val
+VAL_TEMPLATES = {1, 10, 15, 17}            # model selection on UNSEEN templates too (old val was same-template → always 1.0)   # never used for train/val
 LABEL_KEYS = {"PROJECT", "BUDGET", "SPENT", "PROGRESS", "LEADER", "SCHEME", "DEPT"}
 
 
@@ -90,15 +91,17 @@ def main():
     ap = argparse.ArgumentParser(); ap.add_argument("--n", type=int, default=3000); ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--out", default="data"); a = ap.parse_args()
     random.seed(a.seed); os.makedirs(a.out, exist_ok=True)
-    train_ids = [i for i in range(len(TEMPLATES)) if i not in TEST_TEMPLATES]
-    docs = [make_doc(TEMPLATES[random.choice(train_ids)]) for _ in range(a.n)]
-    test = [make_doc(TEMPLATES[random.choice(sorted(TEST_TEMPLATES))]) for _ in range(max(300, a.n // 5))]
-    cut = int(len(docs) * 0.9)
-    for name, rows in (("train", docs[:cut]), ("val", docs[cut:]), ("test", test)):
+    train_ids = [i for i in range(len(TEMPLATES)) if i not in TEST_TEMPLATES and i not in VAL_TEMPLATES]
+    sets = {
+        "train": [make_doc(TEMPLATES[random.choice(train_ids)]) for _ in range(a.n)],
+        "val": [make_doc(TEMPLATES[random.choice(sorted(VAL_TEMPLATES))]) for _ in range(max(200, a.n // 10))],
+        "test": [make_doc(TEMPLATES[random.choice(sorted(TEST_TEMPLATES))]) for _ in range(max(300, a.n // 5))],
+    }
+    for name, rows in sets.items():
         with open(f"{a.out}/{name}.jsonl", "w", encoding="utf-8") as f:
             for r in rows: f.write(json.dumps(r, ensure_ascii=False) + "\n")
         print(f"{name}: {len(rows)} docs")
-    print("sample:", docs[0]["text"])
+    print("sample:", sets["train"][0]["text"])
 
 
 if __name__ == "__main__":
