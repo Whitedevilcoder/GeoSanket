@@ -44,4 +44,26 @@ const setDwellStart = async (userId, zoneId) => {
   await r.setEx(`dwell:${userId}:${zoneId}`, DWELL_TTL, Date.now().toString());
 };
 
-module.exports = { checkDedup, setDedup, getCachedZones, setCachedZones, getDwellStart, setDwellStart };
+// --- TIER 3: NOTIFICATION FATIGUE (DAILY LIMIT) ---
+const getTodayString = () => new Date().toISOString().split('T')[0];
+
+const getDailyNotificationCount = async (userId) => {
+  const r = await getRedis();
+  if (!r) return 0;
+  const key = `notif:daily:${userId}:${getTodayString()}`;
+  const count = await r.get(key);
+  return count ? parseInt(count) : 0;
+};
+
+const incrementDailyNotificationCount = async (userId) => {
+  const r = await getRedis();
+  if (!r) return;
+  const key = `notif:daily:${userId}:${getTodayString()}`;
+  await r.incr(key);
+  await r.expire(key, 86400); // Resets after 24 hours
+};
+
+module.exports = { 
+  checkDedup, setDedup, getCachedZones, setCachedZones, getDwellStart, setDwellStart,
+  getDailyNotificationCount, incrementDailyNotificationCount 
+};

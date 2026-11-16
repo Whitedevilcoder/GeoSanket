@@ -2,7 +2,10 @@ const { Server } = require("socket.io");
 const jwt        = require("jsonwebtoken");
 const User       = require("../models/User");
 const { findZonesNearPoint }   = require("../services/geoService");
-const { checkDedup, setDedup, getCachedZones, setCachedZones, getDwellStart, setDwellStart } = require("../services/redisService");
+const { 
+  checkDedup, setDedup, getCachedZones, setCachedZones, getDwellStart, setDwellStart,
+  getDailyNotificationCount, incrementDailyNotificationCount 
+} = require("../services/redisService");
 const { sendPushNotification } = require("../services/notificationService");
 
 let io;
@@ -35,17 +38,29 @@ const initSocket = (server) => {
 
       for (const zone of zones) {
         if (!zone.project) continue;
+        
+        // TIER 1: Dedup
         const duped = await checkDedup(userId, zone._id);
         if (duped) continue;
 
+        // TIER 2: Dwell
         const dwellStart = await getDwellStart(userId, zone._id);
         if (!dwellStart) { await setDwellStart(userId, zone._id); socket.emit("zone:entered", { zoneId: zone._id, zoneName: zone.name }); continue; }
         const dwellSecs = (Date.now() - parseInt(dwellStart)) / 1000;
         if (dwellSecs < zone.dwellTimeSeconds) { socket.emit("zone:dwelling", { zoneId: zone._id, dwellSeconds: Math.floor(dwellSecs) }); continue; }
 
+        // TIER 3: Fatigue Limit
+        const dailyCount = await getDailyNotificationCount(userId);
+        if (dailyCount >= 5) {
+          socket.emit("zone:filtered", { zoneId: zone._id, reason: "fatigue_limit_reached" });
+          continue; 
+        }
+
+        // Send Notification
         const result = await sendPushNotification({ userId, fcmToken, lang, project: zone.project, zone, location: { lat, lng } });
         if (result.success) {
           await setDedup(userId, zone._id);
+          await incrementDailyNotificationCount(userId);
           socket.emit("notification:sent", { zoneId: zone._id, projectId: zone.project._id });
           if (adminNamespace) adminNamespace.emit("live:notification", { userId, zoneName: zone.name, projectName: zone.project?.name?.en, location: { lat, lng }, timestamp: new Date() });
         }
