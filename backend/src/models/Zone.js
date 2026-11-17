@@ -15,4 +15,5 @@ const ZoneSchema = new mongoose.Schema({
 ZoneSchema.index({ centerPoint: "2dsphere" });
 ZoneSchema.index({ boundary:    "2dsphere" });
 
+
 module.exports = mongoose.model("Zone", ZoneSchema);

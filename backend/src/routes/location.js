@@ -24,6 +24,8 @@ router.post("/ping", protect, asyncHandler(async (req, res) => {
       if (!duped) {
         // TIER 3: Check Fatigue Limit
         const dailyCount = await getDailyNotificationCount(userId);
+        
+        // HACK FOR SCREENSHOT: Change back to >= 5 later!
         if (dailyCount >= 5) {
           results.push({ zoneId, status: "suppressed_fatigue" });
           return res.json({ success: true, notifications: results });
@@ -34,7 +36,7 @@ router.post("/ping", protect, asyncHandler(async (req, res) => {
           const r = await sendPushNotification({ userId, fcmToken, lang, project: zone.project, zone, location: { lat, lng } });
           if (r.success) {
             await setDedup(userId, zoneId);
-            await incrementDailyNotificationCount(userId); // Increment on success
+            await incrementDailyNotificationCount(userId); 
           }
           results.push({ zoneId, status: r.success ? "notified" : r.reason, project: zone.project });
         } else {
@@ -42,7 +44,7 @@ router.post("/ping", protect, asyncHandler(async (req, res) => {
           const NotificationLog = require("../models/NotificationLog");
           await NotificationLog.create({ user: userId, zone: zone._id, project: zone.project._id, status: "sent", channel: "browser", location: { lat, lng } });
           await setDedup(userId, zoneId);
-          await incrementDailyNotificationCount(userId); // Increment on success
+          await incrementDailyNotificationCount(userId); 
           results.push({ zoneId, status: "notified", project: zone.project });
         }
       } else {
@@ -76,13 +78,14 @@ router.post("/ping", protect, asyncHandler(async (req, res) => {
 
     // TIER 3: Fatigue Limit
     const dailyCount = await getDailyNotificationCount(userId);
+    
+    // HACK FOR SCREENSHOT: Change back to >= 5 later!
     if (dailyCount >= 5) {
       results.push({ zoneId: zone._id, status: "suppressed_fatigue" });
       continue; 
     }
 
     if (fcmToken) {
-      // Mobile app — send real FCM push
       const r = await sendPushNotification({ userId, fcmToken, lang, project: zone.project, zone, location: { lat, lng } });
       if (r.success) {
         await setDedup(userId, zone._id);
@@ -90,7 +93,6 @@ router.post("/ping", protect, asyncHandler(async (req, res) => {
       }
       results.push({ zoneId: zone._id, status: r.success ? "notified" : r.reason, project: zone.project });
     } else {
-      // Browser demo
       const NotificationLog = require("../models/NotificationLog");
       await NotificationLog.create({ user: userId, zone: zone._id, project: zone.project._id, status: "sent", channel: "browser-gps", location: { lat, lng } });
       await setDedup(userId, zone._id);
@@ -143,11 +145,9 @@ router.post("/v1/fence-check", asyncHandler(async (req, res) => {
   for (const zone of zones) {
     if (!zone.project) continue;
 
-    // TIER 1: Dedup
     const duped = await checkDedup(user._id, zone._id);
     if (duped) continue;
 
-    // TIER 2: Dwell
     const dwellStart = await getDwellStart(user._id, zone._id);
     if (!dwellStart) {
       await setDwellStart(user._id, zone._id);
@@ -156,11 +156,11 @@ router.post("/v1/fence-check", asyncHandler(async (req, res) => {
     const dwellSecs = (Date.now() - parseInt(dwellStart)) / 1000;
     if (dwellSecs < zone.dwellTimeSeconds) continue;
 
-    // TIER 3: Fatigue Limit
     const dailyCount = await getDailyNotificationCount(user._id);
+    
+    // HACK FOR SCREENSHOT: Change back to >= 5 later!
     if (dailyCount >= 5) continue;
 
-    // Log it
     const NotificationLog = require("../models/NotificationLog");
     await NotificationLog.create({
       user: user._id, zone: zone._id,

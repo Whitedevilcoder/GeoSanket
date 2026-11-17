@@ -2,7 +2,8 @@ const http    = require("http");
 const app     = require("./src/app");
 const connectDB = require("./src/config/db");
 const { initSocket } = require("./src/socket/locationSocket");
-require("./src/config/redis");
+const { getRedis } = require("./src/config/redis");
+getRedis();
 
 const PORT = process.env.PORT || 5000;
 connectDB();
