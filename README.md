@@ -247,5 +247,5 @@ GeoSanket
 ## Live Link 
 🔗 Live Demo: https://geosanket.vercel.app
 
-## Github Link
+## GitHub Link
 🔗 GitHub Link: https://github.com/shubhu2131/GeoSanket
