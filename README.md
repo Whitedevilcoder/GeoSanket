@@ -1,221 +1,251 @@
-# 🇮🇳 GeoSanket — Hyper-Local Civic Awareness Engine
+# 🌐 GeoSanket: An AI-Driven Hyper-Local Geo-Fencing Engine
 
-> Automatically delivers verified government project information to citizens  
-> that the moment they physically enter a geo-fenced zone — zero effort required.
+🔗 Live Demo: https://geosanket.vercel.app
 
-🔗 **Live Demo:** https://geosanket.vercel.app  
-🛠️ **API:** https://geosanket-production.up.railway.app
 
----
-
-## 🎯 Problem
-
-Every year the Indian government spends over ₹10 lakh crore on public infrastructure — yet citizens standing right next to a hospital, bridge, or road have no way to know what it cost, who built it, or who is accountable.
-
-- Government portals require manual searching
-- RTI takes 30 days and requires legal literacy
-- No existing solution uses **physical presence** as the trigger
+GeoSanket is a full-stack, microservices-based civic technology platform designed to bridge the gap between physical public infrastructure and digital information. By combining Deep Learning (NLP), Spatial Databases, and Stateful Behavioral Filtering, GeoSanket automatically pushes verified government project data (budget, completion status, leader) to citizens the moment they physically enter a geofenced zone.
 
 ---
 
-## 💡 Solution
+## 🏗️ System Architecture
 
-A location-triggered civic notification engine that delivers verified government project data to citizens the moment they enter a geo-fenced zone — requiring **zero manual input**.
+GeoSanket is built on a decoupled microservices architecture to ensure high performance, fault tolerance, and zero-cost deployment for academic research.
 
-> **"Location is the query. Government data is the result.  
-> The citizen's presence is the only permission needed."**
+```mermaid
+graph TD
+    %% Styling
+    classDef client fill:#3b82f6,stroke:#1e3a8a,stroke-width:2px,color:#fff;
+    classDef backend fill:#10b981,stroke:#047857,stroke-width:2px,color:#fff;
+    classDef db fill:#f59e0b,stroke:#b45309,stroke-width:2px,color:#fff;
+    classDef ai fill:#8b5cf6,stroke:#5b21b6,stroke-width:2px,color:#fff;
 
----
+    %% Nodes
+    A[React.js Frontend<br/>Hosted on Vercel]:::client
+    B[Node.js & Express Backend<br/>Hosted on Render]:::backend
+    C[(MongoDB Atlas<br/>2dsphere Spatial Index)]:::db
+    D[(Redis Upstash<br/>Deduplication & Fatigue Limits)]:::db
+    E{Cloudflare Tunnel<br/>Secure HTTPS Routing}
+    F[Python FastAPI AI Service<br/>Running Locally]:::ai
+    G[Hugging Face Hub<br/>Fine-Tuned BERT Model]:::ai
 
-## 🚀 How It Works
+    %% Connections
+    A -- REST API / Socket.io --> B
+    B -- Sub-100ms Geo Queries --> C
+    B -- 3-Tier Rule Checks --> D
+    B -- Fallback Proxy --> E
+    E -- Forwards Request --> F
+    F -- Downloads Model Weights --> G
 
-```
-Citizen walks near a govt project
-        ↓
-OS-level GPS detects zone entry (hardware chip, ~2% battery)
-        ↓
-5-minute dwell check (passers-by ignored)
-        ↓
-Redis dedup check (no spam — 1 notification per zone per 24hrs)
-        ↓
-MongoDB fetches verified project data
-        ↓
-Push notification delivered in ~650ms
-        ↓
-Citizen sees: project name, ₹ budget, completion %, leader
-```
-
----
-
-## 📱 What's Built
-
-### Citizen Flow
-- Anonymous device onboarding — no sign-up, no login required
-- Simulate zone entry via web portal to test full pipeline
-- Real browser push notifications in the demo
-- Notification history with timestamps
-
-### Admin Panel (`/admin`)
-- Live map with all active geo-fence zones
-- Create / delete zones with lat-lng + radius
-- Add / manage government projects with full details
-- Real-time notification feed via Socket.io
-- Analytics dashboard — notifications over time, by zone
-
-### Integration API
-Any existing government app can plug in with **one API call**:
-
-```http
-POST /api/v1/fence-check
-Content-Type: application/json
-
-{
-  "lat": 28.5672,
-  "lng": 77.2090,
-  "deviceId": "hashed-device-id",
-  "appId": "aarogya_setu",
-  "lang": "hi"
-}
-```
-
-Response:
-```json
-{
-  "shouldNotify": true,
-  "notifications": [{
-    "title": "AIIMS Trauma Centre",
-    "body": "₹85Cr · 95% complete · Built under PMAY Health",
-    "leader": "Arvind Kejriwal",
-    "scheme": "PMAY Health",
-    "completionPercentage": 95
-  }]
-}
-```
-
-### Target Integration Partners
-
-| App | Users | Integration |
-|-----|-------|-------------|
-| Aarogya Setu | 240M+ | REST API |
-| UMANG | 38M+ | REST API |
-| DigiLocker | 150M+ | REST API |
-| mParivahan | 80M+ | REST API |
-| **Total** | **500M+** | **Zero new downloads** |
-
----
-
-## 🔒 Smart Notification Control
-
-- **Dwell time** — user must stay 5 min inside zone (passers-by ignored)
-- **Deduplication** — Redis TTL key per user+zone, 24-hour window
-- **Offline resilient** — zones cached locally, works without internet
-- **Privacy first** — GPS coordinates never stored, only zone ID logged
-- **Version-aware** — notification resets when govt updates project data
-
----
-
-## 🛠️ Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| Frontend | React + Vite + Tailwind + Leaflet.js |
-| Backend | Node.js + Express |
-| Database | MongoDB Atlas + 2dsphere geo-index |
-| Cache | Redis (Upstash) |
-| Realtime | Socket.io |
-| Notifications | Firebase FCM |
-| Deployment | Vercel (frontend) + Railway (backend) |
-
----
-
-## 🏗️ Architecture
-
-```
-Browser / Mobile App
-        ↓ HTTPS
-Railway Backend (Node.js + Express)
-    ├── POST /api/v1/fence-check     ← integration API
-    ├── POST /api/location/ping      ← mobile app ping
-    ├── GET  /api/zones              ← zone management
-    ├── GET  /api/projects           ← project management
-    └── GET  /api/analytics/*        ← dashboard stats
-        ↓
-MongoDB Atlas          Redis (Upstash)        Firebase FCM
-(zones, projects,      (dedup, dwell,         (push notifications)
- users, logs)           zone cache)
+    %% Annotations
+    subgraph Cloud Environment
+        A
+        B
+        C
+        D
+    end
+    subgraph Local Machine
+        E
+        F
+    end
 ```
 
 ---
 
-## 🚀 How to Run Locally
+## ✨ Key Features
+
+### 1. Hybrid NLP Extraction Pipeline
+The system extracts structured data (Name, Budget, Leader, Scheme, etc.) from unstructured government press releases.
+* **Fine-Tuned BERT:** Fine-tuned `bert-base-multilingual-cased` for Named Entity Recognition (NER) to extract complex entities (Leaders, Departments) in English and Hindi.
+* **Rule-Based Fallback:** A context-scoring Regex engine handles numerical extraction (Sanctioned vs. Spent budgets).
+* **Dataset Auditing:** Built an `audit_dataset.py` script to eliminate "Shortcut Learning" (positional bias) from the synthetic training data, resulting in a **0.975 Lenient Micro-F1 Score**.
+
+### 2. Behavioral Notification Filtering
+To prevent notification fatigue, the backend uses a 3-Tier Stateful Expert System via Redis:
+* **Tier 1 (24-Hour Deduplication):** Prevents redundant alerts within a 24-hour window.
+* **Tier 2 (Dwell-Time Threshold):** Requires the user to stay inside the zone for 300 seconds, filtering out drive-by transit.
+* **Tier 3 (Daily Frequency Cap):** Limits users to 5 notifications per day, returning a `suppressed_fatigue` state if exceeded.
+
+### 3. Spatial Intelligence
+Utilizes MongoDB `2dsphere` indexing to execute `$near` geospatial queries. The backend resolves a user's GPS coordinate against thousands of active zones in **under 50 milliseconds**.
+
+---
+
+## 📁 Repository Structure
+
+```text
+GeoSanket/
+├── backend/                  # Node.js + Express API
+│   ├── src/
+│   │   ├── models/           # Mongoose schemas (Zones, Projects, Users)
+│   │   ├── routes/           # REST endpoints (auth, location, ai, etc.)
+│   │   ├── services/         # Redis and Notification services
+│   │   └── socket/           # Socket.io WebSocket logic
+│   └── package.json
+├── frontend/                 # React.js + Vite (Citizen & Admin Panels)
+│   ├── src/
+│   │   ├── components/       # Reusable UI (AIExtractBox, Maps)
+│   │   └── pages/            # Admin Dashboard, Login, Live Map
+│   └── package.json
+├── ai-service/               # Python FastAPI NLP Microservice
+│   ├── main.py               # FastAPI entry point
+│   ├── extractor.py          # Rule-based NLP logic
+│   ├── ner_model.py          # BERT model inference logic
+│   └── requirements.txt
+└── ml/                       # Machine Learning Pipeline
+    ├── make_dataset.py       # Synthetic data generation
+    ├── audit_dataset.py      # Dataset bias auditor
+    ├── train_ner.py          # BERT fine-tuning script (Colab T4)
+    ├── compare.py            # Strict/Lenient F1 evaluation
+    └── push_to_hub.py        # Uploads model to Hugging Face
+```
+
+---
+
+## 🚀 Local Setup & Installation
 
 ### Prerequisites
-```
-Node.js 20+
-MongoDB Atlas account
-Redis (Upstash free tier)
-Firebase project
-```
+* Node.js (v18+)
+* Python (v3.10+)
+* MongoDB Atlas Account
+* Upstash Redis Account
+* Cloudflare (`cloudflared` installed locally)
 
-### Backend
+### 1. Backend Setup
 ```bash
 cd backend
 npm install
-cp .env.example .env
-# Fill in your credentials in .env
-npm run seed    # loads 3 Delhi zones + demo users
-npm run dev     # starts on port 5000
 ```
 
-### Frontend
+Create a `.env` file in the `backend/` directory:
+```env
+PORT=5000
+MONGO_URI=your_mongodb_connection_string
+JWT_SECRET=your_jwt_secret
+REDIS_URL=your_upstash_redis_url
+AI_SERVICE_URL=http://localhost:8000
+AI_BERT_URL=your_cloudflare_tunnel_url
+FIREBASE_PROJECT_ID=...
+FIREBASE_CLIENT_EMAIL=...
+FIREBASE_PRIVATE_KEY=...
+```
+
+Start the backend:
+```bash
+npm run dev
+```
+
+### 2. Frontend Setup
 ```bash
 cd frontend
 npm install
-# Create .env.local with:
-# VITE_API_URL=http://localhost:5000
-# VITE_SOCKET_URL=http://localhost:5000
-npm run dev     # starts on port 3000
 ```
 
-### Test the API
+Create a `.env` file in the `frontend/` directory:
+```env
+VITE_API_URL=http://localhost:5000
+VITE_SOCKET_URL=http://localhost:5000
+```
+
+Start the frontend:
 ```bash
-# Health check
-curl http://localhost:5000/
-
-# Fence check (integration API)
-curl -X POST http://localhost:5000/api/v1/fence-check \
-  -H "Content-Type: application/json" \
-  -d '{"lat":28.5672,"lng":77.2090,"deviceId":"test-001","lang":"en"}'
-
-# Admin login
-curl -X POST http://localhost:5000/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"phone":"9999999999","password":"admin123"}'
+npm run dev
 ```
 
-### Demo Credentials
+### 3. AI Microservice Setup
+```bash
+cd ai-service
+python -m venv venv
+
+# Activate virtual environment:
+# Windows:
+venv\Scripts\activate
+# Mac/Linux:
+source venv/bin/activate
+
+pip install -r requirements.txt
+pip install -r requirements-ml.txt
 ```
-Admin:   9999999999 / admin123
-Citizen: 9876543210 / citizen123
+
+Set your Hugging Face Model ID (so it loads directly from the Hub without needing local training):
+```bash
+# Windows CMD:
+set NER_MODEL_ID=whitedevilcoder/geosanket-ner
+
+# Windows PowerShell:
+$env:NER_MODEL_ID="whitedevilcoder/geosanket-ner"
+
+# Mac/Linux:
+export NER_MODEL_ID=whitedevilcoder/geosanket-ner
 ```
+
+Start the FastAPI server:
+```bash
+uvicorn main:app --port 8000
+```
+
+### 4. Expose AI Service (Cloudflare Tunnel)
+To allow your Render backend to communicate with your local BERT model, run:
+```bash
+cloudflared tunnel --url http://localhost:8000
+```
+Copy the generated `https://...trycloudflare.com` URL and set it as `AI_BERT_URL` in your Render Environment Variables.
 
 ---
 
-## 📊 Demo Seed Data (Delhi)
+## 📊 Evaluation & Results
 
-| Zone | Type | Coordinates |
-|------|------|-------------|
-| AIIMS Main Gate | Hospital | 28.5672, 77.2090 |
-| Signature Bridge | Bridge | 28.7073, 77.2263 |
-| DU North Campus Metro | College | 28.6880, 77.2073 |
+### NLP Extraction (Held-Out Test Set)
+
+| System | Strict F1 | Lenient F1 | Key Strength |
+| :--- | :---: | :---: | :--- |
+| **Rule-Based Baseline** | 0.909 | 0.912 | High accuracy on numerical context |
+| **Fine-Tuned BERT** | 0.916 | 0.963 | High accuracy on entity names (Leader/Scheme) |
+| **Hybrid (BERT + Rules)** | **0.929** | **0.975** | Combines contextual NER with exact numeric extraction |
+
+### Behavioral Filtering (Redis)
+* Successfully validated the `suppressed_fatigue` state when the daily notification count reaches 5 per user.
+
+### Spatial Latency (MongoDB)
+* `$near` query using `2dsphere` index resolves intersecting zones in **~45 milliseconds**.
 
 ---
 
-## 👥 Team
-**Hustlers** — India Innovates 2026
+## 🤗 Model Hub
+The fine-tuned multilingual BERT model is hosted on Hugging Face:  
+**[whitedevilcoder/geosanket-ner](https://huggingface.co/whitedevilcoder/geosanket-ner)**
 
-## 🏆 Built For
-India Innovates 2026 · Municipal Corporation of Delhi (MCD)
+---
 
-## 📽️ Demo
-https://geosanket.vercel.app
+## 📜 License
+
+```text
+MIT License
+
+Copyright (c) 2026 GeoSanket Team
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+## Team 
+GeoSanket
+
+## Live Link 
+🔗 Live Demo: https://geosanket.vercel.app
+
+## Github Link
+🔗 GitHub Link: https://github.com/shubhu2131/GeoSanket
